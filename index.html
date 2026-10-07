@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>William Goes South</title>
+<meta name="description" content="Where William is on his way to the Dientes de Navarino, the southernmost trek on Earth, Thanksgiving week 2026.">
+<meta property="og:title" content="William Goes South">
+<meta property="og:description" content="A live-ish chart of one man's progress toward the bottom of the map.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%230b1527'/%3E%3Cpath d='M32 8 L38 32 L32 56 L26 32 Z' fill='%23d8a84a'/%3E%3Cpath d='M32 32 L38 32 L32 56 L26 32 Z' fill='%23e0604f'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&family=Caveat:wght@500;600&display=swap">
+<style>
+/* Layout: a chart that reads top-to-bottom as a journey south. A fixed instrument rail on the left
+   reports latitude as you scroll; the main column is a sequence of stations joined by a route line. */
+:root{
+  --paper:#eceee8;        /* cool chart paper */
+  --paper-2:#e2e5dd;      /* recessed panels */
+  --ink:#14213a;          /* Prussian ink */
+  --ink-2:#4b5670;        /* secondary ink */
+  --ink-3:#8a93a6;        /* muted ink, grid */
+  --line:#c4c9c0;         /* hairlines */
+  --grid:#dde0d8;         /* chart grid, recessive */
+  --brass:#9a6f1c;        /* instrument accent */
+  --brass-soft:rgba(154,111,28,.12);
+  --route:#a8352c;        /* cartographic route red */
+  --glacier:#3e7f97;      /* channel water */
+  --glacier-soft:rgba(62,127,151,.14);
+  --good:#3b7a4a; --warn:#b07a1a; --bad:#a8352c;
+  --display:"Young Serif", "Iowan Old Style", Georgia, serif;
+  --body:"Newsreader", "Iowan Old Style", Georgia, serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --hand:"Caveat", "Bradley Hand", "Segoe Print", cursive;
+  --rail-w:232px;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0b1527; --paper-2:#101d33; --ink:#e9e4d3; --ink-2:#b9b3a1; --ink-3:#737d93;
+    --line:#223252; --grid:#15223a; --brass:#d8a84a; --brass-soft:rgba(216,168,74,.14);
+    --route:#e0604f; --glacier:#7fb8cc; --glacier-soft:rgba(127,184,204,.16);
+    --good:#7cc08a; --warn:#e2b45a; --bad:#e0604f;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0b1527; --paper-2:#101d33; --ink:#e9e4d3; --ink-2:#b9b3a1; --ink-3:#737d93;
+  --line:#223252; --grid:#15223a; --brass:#d8a84a; --brass-soft:rgba(216,168,74,.14);
+  --route:#e0604f; --glacier:#7fb8cc; --glacier-soft:rgba(127,184,204,.16);
+  --good:#7cc08a; --warn:#e2b45a; --bad:#e0604f;
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{height:100%}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:var(--body); font-size:18px; line-height:1.55;
+  font-optical-sizing:auto;
+  background-image:
+    linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size:96px 96px;
+  background-position:center top;
+}
+body::before{ /* paper vignette so the grid recedes */
+  content:""; position:fixed; inset:0; pointer-events:none; z-index:0;
+  background:radial-gradient(120% 90% at 50% 10%, transparent 40%, var(--paper) 100%);
+  opacity:.9;
+}
+a{color:var(--glacier)}
+a:focus-visible,button:focus-visible{outline:2px solid var(--brass); outline-offset:3px}
+h1,h2,h3{font-family:var(--display); font-weight:400; line-height:1.08; text-wrap:balance; margin:0}
+p{margin:0}
+.eyebrow{font-family:var(--mono); font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-2)}
+.hand{font-family:var(--hand); font-size:1.35rem; color:var(--brass); line-height:1.15}
+.mono{font-family:var(--mono); font-variant-numeric:tabular-nums}
+.sr{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0)}
+
+/* ---------- Instrument rail ---------- */
+.rail{
+  position:fixed; left:0; top:0; bottom:0; width:var(--rail-w); z-index:5;
+  padding:28px 20px calc(20px + env(safe-area-inset-bottom,0px));
+  border-right:1px solid var(--line); background:var(--paper-2);
+  display:flex; flex-direction:column; gap:22px;
+}
+.rail .inst{display:flex; flex-direction:column; gap:4px}
+.rail .inst .val{font-family:var(--mono); font-size:22px; color:var(--ink); font-variant-numeric:tabular-nums; letter-spacing:.02em}
+.rail .inst .sub{font-family:var(--mono); font-size:11px; color:var(--ink-3)}
+.compass{width:120px; height:120px; margin:4px auto 0}
+.compass svg{width:100%; height:100%; display:block}
+.compass .needle{transform-origin:60px 60px; transition:transform .25s linear}
+.rail .status-mini{font-size:15px; line-height:1.35; color:var(--ink-2)}
+.rail .spacer{flex:1}
+.themebtn{
+  font-family:var(--mono); font-size:11px; letter-spacing:.12em; text-transform:uppercase;
+  background:none; border:1px solid var(--line); color:var(--ink-2); border-radius:999px;
+  padding:7px 12px; cursor:pointer; align-self:flex-start;
+}
+.themebtn:hover{border-color:var(--brass); color:var(--brass)}
+
+/* ---------- Main column ---------- */
+.page{position:relative; z-index:1; margin-left:var(--rail-w); padding-inline:clamp(20px,5vw,72px); padding-block:0 96px}
+.wrap{max-width:860px}
+
+.hero{padding-block:clamp(56px,9vh,120px) 40px; position:relative; overflow:hidden; margin-inline:calc(-1*clamp(20px,5vw,72px)); padding-inline:clamp(20px,5vw,72px)}
+.hero canvas{position:absolute; inset:0; width:100%; height:100%; pointer-events:none}
+.hero .wrap{position:relative}
+.hero h1{font-size:clamp(46px,8vw,104px); letter-spacing:-.01em}
+.hero h1 .south{color:var(--route); font-style:normal}
+.hero .dek{font-size:clamp(19px,2.2vw,24px); max-width:34ch; margin-top:18px; color:var(--ink-2); font-style:italic}
+.hero .coords{margin-top:28px; display:flex; flex-wrap:wrap; gap:10px 28px; font-family:var(--mono); font-size:13px; color:var(--ink-2)}
+.hero .coords b{color:var(--ink); font-weight:500}
+
+/* ---------- Status board ---------- */
+.board{
+  margin-top:28px; border:1.5px solid var(--ink); background:var(--paper-2);
+  display:grid; grid-template-columns:1fr; position:relative;
+}
+.board::before{ /* brass screw-plate corner marks */
+  content:""; position:absolute; inset:8px; border:1px solid var(--brass); opacity:.55; pointer-events:none;
+}
+.board .cell{padding:26px 28px; display:flex; flex-direction:column; gap:10px; min-width:0}
+.board .cell + .cell{border-top:1px solid var(--line)}
+.board .answer{font-family:var(--display); font-size:clamp(26px,3.6vw,40px); line-height:1.15}
+.board .answer small{display:block; font-family:var(--body); font-style:italic; font-size:clamp(17px,1.8vw,21px); color:var(--ink-2); margin-top:8px; font-weight:400}
+.board .big{font-family:var(--mono); font-size:clamp(44px,7vw,84px); line-height:1; letter-spacing:-.02em; color:var(--brass); font-variant-numeric:tabular-nums}
+.board .big small{font-size:.32em; letter-spacing:.1em; color:var(--ink-2); margin-left:8px}
+.pill{display:inline-flex; align-items:center; gap:8px; font-family:var(--mono); font-size:12px; letter-spacing:.1em; text-transform:uppercase; border:1px solid var(--line); border-radius:999px; padding:5px 12px; color:var(--ink-2); align-self:flex-start}
+.pill .dot{width:8px; height:8px; border-radius:50%; background:var(--ink-3)}
+.pill.on .dot{background:var(--good); box-shadow:0 0 0 4px color-mix(in srgb, var(--good) 25%, transparent)}
+.pill.off .dot{background:var(--bad)}
+
+@media (min-width:720px){
+  .board{grid-template-columns:1.4fr 1fr}
+  .board .cell + .cell{border-top:0; border-left:1px solid var(--line)}
+}
+
+/* ---------- Sections ---------- */
+section{padding-block:72px 0}
+.sec-head{display:flex; align-items:baseline; gap:18px; flex-wrap:wrap; margin-bottom:28px}
+.sec-head h2{font-size:clamp(30px,4vw,44px)}
+.sec-head .eyebrow{margin-left:auto}
+.lede{max-width:62ch; color:var(--ink-2); font-size:19px}
+
+/* ---------- Route (stations) ---------- */
+.route{position:relative; padding-left:56px; margin-top:36px}
+.route .line{position:absolute; left:19px; top:0; bottom:0; width:2px; background:repeating-linear-gradient(to bottom, var(--ink-3) 0 6px, transparent 6px 12px)}
+.route .line .done{position:absolute; left:0; top:0; width:100%; background:var(--route); height:0; transition:height .6s ease}
+.station{position:relative; padding-block:22px 30px; border-bottom:1px solid var(--line); display:grid; grid-template-columns:1fr; gap:6px 24px}
+.station:last-child{border-bottom:0}
+.station .mark{
+  position:absolute; left:-46px; top:30px; width:22px; height:22px; border-radius:50%;
+  border:2px solid var(--ink-3); background:var(--paper);
+  display:grid; place-items:center;
+}
+.station .mark::after{content:""; width:6px; height:6px; border-radius:50%; background:var(--ink-3)}
+.station.done .mark{border-color:var(--route)} .station.done .mark::after{background:var(--route)}
+.station.here .mark{border-color:var(--brass); background:var(--brass); box-shadow:0 0 0 6px var(--brass-soft)}
+.station.here .mark::after{background:var(--paper)}
+.station.camp .mark{border-radius:3px}
+.station .when{font-family:var(--mono); font-size:12.5px; color:var(--ink-2); letter-spacing:.06em; display:flex; gap:14px; flex-wrap:wrap}
+.station .when .lat{color:var(--ink-3)}
+.station h3{font-size:clamp(23px,2.6vw,30px)}
+.station h3 .sub{display:block; font-family:var(--body); font-style:italic; font-size:.68em; color:var(--ink-2); margin-top:4px}
+.station .what{max-width:60ch; color:var(--ink); margin-top:4px}
+.station .note{margin-top:8px; max-width:48ch}
+.station .facts{display:flex; flex-wrap:wrap; gap:8px; margin-top:10px}
+.station .facts span{font-family:var(--mono); font-size:11.5px; letter-spacing:.06em; color:var(--ink-2); border:1px solid var(--line); padding:3px 9px; border-radius:4px; background:var(--paper)}
+.here-tag{
+  position:absolute; right:0; top:22px; font-family:var(--hand); font-size:1.3rem; color:var(--brass);
+  display:none; align-items:center; gap:6px;
+}
+.station.here .here-tag{display:inline-flex}
+.here-tag svg{width:34px; height:16px}
+@media (min-width:720px){
+  .station{grid-template-columns:150px 1fr}
+  .station .when{flex-direction:column; gap:4px; padding-top:9px}
+  .station .mark{top:32px}
+}
+
+/* ---------- Elevation profile ---------- */
+.profile{position:relative; margin-top:12px; border:1px solid var(--line); background:var(--paper-2); padding:18px 10px 8px}
+.profile svg{width:100%; height:auto; display:block; overflow:visible}
+.profile .grid line{stroke:var(--line); stroke-width:1}
+.profile .axis text{font-family:var(--mono); font-size:11px; fill:var(--ink-3)}
+.profile .area{fill:var(--glacier-soft)}
+.profile .trace{fill:none; stroke:var(--glacier); stroke-width:2; stroke-linejoin:round}
+.profile .label{font-family:var(--mono); font-size:11px; fill:var(--ink-2)}
+.profile .label.pass{fill:var(--ink)}
+.profile .camp-mark{fill:var(--paper); stroke:var(--ink); stroke-width:1.5}
+.profile .you{fill:var(--brass); stroke:var(--paper); stroke-width:2}
+.profile .you-ring{fill:none; stroke:var(--brass); stroke-width:1.5; opacity:.7}
+.profile .hit{fill:transparent}
+.profile .cross{stroke:var(--ink-3); stroke-dasharray:3 3; stroke-width:1}
+.tip{
+  position:absolute; pointer-events:none; background:var(--ink); color:var(--paper); font-family:var(--mono); font-size:12px;
+  padding:6px 9px; border-radius:3px; white-space:nowrap; transform:translate(-50%,-120%); display:none; z-index:2;
+}
+.tip b{font-weight:500; color:var(--brass)}
+.profile-foot{display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; font-family:var(--mono); font-size:12px; color:var(--ink-3); margin-top:10px; padding-inline:4px}
+
+/* ---------- Dispatches ---------- */
+.dispatches{display:flex; flex-direction:column; gap:0; margin-top:8px; border-top:1px solid var(--line)}
+.dispatch{display:grid; grid-template-columns:1fr; gap:4px 24px; padding-block:20px; border-bottom:1px solid var(--line)}
+.dispatch .meta{font-family:var(--mono); font-size:12.5px; color:var(--ink-2); letter-spacing:.05em; display:flex; gap:12px; flex-wrap:wrap}
+.dispatch .text{max-width:60ch}
+.dispatch .text em{color:var(--ink-2)}
+@media (min-width:720px){ .dispatch{grid-template-columns:150px 1fr} .dispatch .meta{flex-direction:column; gap:3px} }
+.empty{padding:28px; border:1px dashed var(--ink-3); color:var(--ink-2); font-style:italic; margin-top:8px}
+.silence{margin-top:18px; display:flex; gap:14px; align-items:flex-start; padding:18px 20px; background:var(--glacier-soft); border-left:3px solid var(--glacier)}
+.silence svg{flex:none; width:28px; height:28px; margin-top:2px}
+
+/* ---------- Worry meter ---------- */
+.meter{margin-top:8px; border:1.5px solid var(--ink); background:var(--paper-2); padding:26px 28px; display:grid; gap:20px; grid-template-columns:1fr}
+.gauge{width:220px; max-width:100%; margin:0 auto}
+.gauge svg{width:100%; height:auto; display:block}
+.gauge .arc{fill:none; stroke-width:14; stroke-linecap:butt}
+.gauge .needle{transform-origin:110px 110px; transition:transform 1.2s cubic-bezier(.2,.8,.2,1)}
+.gauge text{font-family:var(--mono); font-size:11px; fill:var(--ink-3); letter-spacing:.08em}
+.meter .level{font-family:var(--display); font-size:clamp(24px,3vw,34px)}
+.meter .level .lv{color:var(--brass)}
+.meter ol{margin:10px 0 0; padding-left:22px; display:flex; flex-direction:column; gap:6px; max-width:58ch}
+.meter li::marker{font-family:var(--mono); color:var(--ink-3)}
+@media (min-width:720px){ .meter{grid-template-columns:240px 1fr; align-items:center} }
+
+/* ---------- Field notes ---------- */
+.notes{display:grid; grid-template-columns:repeat(auto-fit, minmax(230px,1fr)); gap:1px; background:var(--line); border:1px solid var(--line); margin-top:8px}
+.note-card{background:var(--paper); padding:22px 22px 24px; display:flex; flex-direction:column; gap:8px; min-width:0}
+.note-card .k{font-family:var(--mono); font-size:11.5px; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3)}
+.note-card .v{font-family:var(--display); font-size:26px; line-height:1.1}
+.note-card .d{color:var(--ink-2); font-size:16px; line-height:1.45}
+.seasons{display:flex; align-items:center; gap:10px}
+.seasons .ico{width:34px; height:34px; display:grid; place-items:center; color:var(--brass)}
+.seasons .ico svg{width:30px; height:30px}
+.seasons .v{transition:opacity .35s}
+
+footer{margin-top:88px; padding-top:22px; border-top:1px solid var(--line); font-family:var(--mono); font-size:12px; color:var(--ink-3); display:flex; flex-wrap:wrap; gap:8px 28px}
+footer a{color:var(--ink-2)}
+
+/* ---------- Narrow screens: rail becomes a sticky strip ---------- */
+@media (max-width:900px){
+  :root{--rail-w:0px}
+  .page{margin-left:0}
+  .rail{
+    position:sticky; top:0; bottom:auto; width:auto; height:auto; flex-direction:row; align-items:center; gap:18px;
+    padding:10px 16px; padding-top:calc(10px + env(safe-area-inset-top,0px));
+    border-right:0; border-bottom:1px solid var(--line);
+  }
+  .rail .compass{width:40px; height:40px; margin:0}
+  .rail .inst .val{font-size:16px}
+  .rail .inst .sub{display:none}
+  .rail .inst.stat{display:none}
+  .rail .inst.time{display:none}
+  .rail .spacer{flex:1}
+  .themebtn{padding:6px 10px}
+  .here-tag{position:static; margin-top:8px}
+}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important; animation:none !important}
+}
+</style>
+</head>
+<body>
+
+<aside class="rail" aria-label="Instruments">
+  <div class="compass" aria-hidden="true">
+    <svg viewBox="0 0 120 120">
+      <circle cx="60" cy="60" r="56" fill="none" stroke="var(--line)" stroke-width="1.5"/>
+      <circle cx="60" cy="60" r="46" fill="none" stroke="var(--line)" stroke-width="1" stroke-dasharray="2 4"/>
+      <g font-family="IBM Plex Mono, monospace" font-size="10" fill="var(--ink-2)" text-anchor="middle">
+        <text x="60" y="14">N</text><text x="60" y="113">S</text><text x="110" y="64">E</text><text x="10" y="64">W</text>
+      </g>
+      <g class="needle" id="needle">
+        <path d="M60 18 L66 60 L60 70 L54 60 Z" fill="var(--route)"/>
+        <path d="M60 102 L66 60 L60 50 L54 60 Z" fill="var(--ink-3)"/>
+        <circle cx="60" cy="60" r="4" fill="var(--brass)"/>
+      </g>
+    </svg>
+  </div>
+  <div class="inst">
+    <span class="eyebrow">Latitude</span>
+    <span class="val" id="lat">40.71° N</span>
+    <span class="sub" id="latsub">scroll to go south</span>
+  </div>
+  <div class="inst time">
+    <span class="eyebrow">Puerto Williams</span>
+    <span class="val" id="clock">--:--</span>
+    <span class="sub">UTC−3, same as NYC in spring. Sort of.</span>
+  </div>
+  <div class="inst stat">
+    <span class="eyebrow">Status</span>
+    <span class="status-mini" id="status-mini">Loading…</span>
+  </div>
+  <div class="spacer"></div>
+  <button class="themebtn" id="themebtn" type="button" aria-label="Toggle day and night">Night</button>
+</aside>
+
+<main class="page">
+  <header class="hero">
+    <canvas id="sky" aria-hidden="true"></canvas>
+    <div class="wrap">
+      <p class="eyebrow">Expedition chart · Thanksgiving week 2026</p>
+      <h1 style="margin-top:14px">William Goes <span class="south">South</span></h1>
+      <p class="dek">One man, one tent, and a 27-mile loop around some mountains called the Teeth, at the bottom of the map.</p>
+      <div class="coords">
+        <span>FROM <b>40.71° N</b> New York</span>
+        <span>TO <b>54.93° S</b> Puerto Williams, Chile</span>
+        <span>NET <b>95.6°</b> of latitude</span>
+        <span>HUTS <b>0</b></span>
+      </div>
+
+      <div class="board" id="board" aria-live="polite">
+        <div class="cell">
+          <span class="eyebrow">Where is William?</span>
+          <p class="answer" id="answer">Somewhere.<small id="answer-sub">Computing…</small></p>
+          <span class="pill" id="signal"><span class="dot"></span><span id="signal-text">Signal: checking</span></span>
+        </div>
+        <div class="cell">
+          <span class="eyebrow" id="big-label">Days until departure</span>
+          <p class="big" id="big">—</p>
+          <p class="hand" id="big-note"></p>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+
+  <section id="route">
+    <div class="sec-head">
+      <h2>The route</h2>
+      <span class="eyebrow">11 days · 9 flights · 5 camps</span>
+    </div>
+    <p class="lede">Every stop, top to bottom, which is also north to south. The red line fills in as he goes. The brass dot is where the calendar says he should be, which is not the same as where he is.</p>
+
+    <div class="route" id="stations">
+      <div class="line"><div class="done" id="done"></div></div>
+      <!-- stations are rendered by script from the itinerary -->
+    </div>
+  </section>
+
+  <section id="teeth">
+    <div class="sec-head">
+      <h2>The Teeth, in profile</h2>
+      <span class="eyebrow">Dientes de Navarino circuit · 44 km · 2,100 m up</span>
+    </div>
+    <p class="lede">Six passes, four lake camps, no trail markers worth the name. Hover for the named places. The brass dot moves camp to camp with the dates.</p>
+    <div class="profile" id="profile">
+      <div class="tip" id="tip"></div>
+    </div>
+    <div class="profile-foot">
+      <span>Elevations approximate, from the route guides. Mud not to scale.</span>
+      <span>↑ north is nowhere; this is distance, not direction</span>
+    </div>
+  </section>
+
+  <section id="dispatches">
+    <div class="sec-head">
+      <h2>Dispatches</h2>
+      <span class="eyebrow">from the field, when there is a field</span>
+    </div>
+    <p class="lede">Short notes posted from whatever wifi he can find. New ones appear at the top.</p>
+    <div class="dispatches" id="dispatch-list"></div>
+    <div class="silence">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--glacier)"><path d="M3 10h4l3-7 4 18 3-11h4"/></svg>
+      <p><strong>Scheduled silence: Nov 22 to Nov 26.</strong> There is no phone signal on the circuit. Nothing arriving for five days is the plan working, not the plan failing.</p>
+    </div>
+  </section>
+
+  <section id="worry">
+    <div class="sec-head">
+      <h2>When to worry</h2>
+      <span class="eyebrow">calibrated daily</span>
+    </div>
+    <p class="lede">A single-handed trek deserves a single-handed panic schedule. The needle moves with the date.</p>
+    <div class="meter">
+      <div class="gauge" aria-hidden="true">
+        <svg viewBox="0 0 220 130">
+          <path class="arc" d="M20 110 A90 90 0 0 1 66 32" stroke="var(--good)"/>
+          <path class="arc" d="M66 32 A90 90 0 0 1 154 32" stroke="var(--warn)"/>
+          <path class="arc" d="M154 32 A90 90 0 0 1 200 110" stroke="var(--bad)"/>
+          <text x="20" y="128" text-anchor="start">FINE</text>
+          <text x="110" y="18" text-anchor="middle">HMM</text>
+          <text x="200" y="128" text-anchor="end">ACT</text>
+          <g class="needle" id="worry-needle">
+            <path d="M110 110 L106 104 L110 28 L114 104 Z" fill="var(--ink)"/>
+            <circle cx="110" cy="110" r="6" fill="var(--brass)"/>
+          </g>
+        </svg>
+      </div>
+      <div>
+        <p class="level" id="worry-level"><span class="lv">Level —</span></p>
+        <p class="lede" id="worry-text" style="font-size:18px; margin-top:8px"></p>
+        <ol id="worry-steps"></ol>
+      </div>
+    </div>
+  </section>
+
+  <section id="notes">
+    <div class="sec-head">
+      <h2>Field notes</h2>
+      <span class="eyebrow">for the folks at home</span>
+    </div>
+    <div class="notes">
+      <div class="note-card">
+        <span class="k">Weather today</span>
+        <div class="seasons">
+          <span class="ico" id="season-ico"></span>
+          <span class="v" id="season-v">Sun</span>
+        </div>
+        <p class="d">Locals say you get all four seasons in an hour. This widget is as accurate as any forecast down there.</p>
+      </div>
+      <div class="note-card">
+        <span class="k">Daylight</span>
+        <span class="v">~17 hours</span>
+        <p class="d">Sunrise around 5:15, sunset near 9:45. Lost is easier to fix when it is still light out.</p>
+      </div>
+      <div class="note-card">
+        <span class="k">Thanksgiving dinner</span>
+        <span class="v">Centolla</span>
+        <p class="d">Southern king crab, the local specialty. Turkey is unavailable in the southernmost town on Earth. Gratitude is expected to be high.</p>
+      </div>
+      <div class="note-card">
+        <span class="k">Known hazards</span>
+        <span class="v">Beavers</span>
+        <p class="d">Introduced in the 1940s for a fur trade that never happened. They have since dammed the last day of the trail. Also: scree, peat, wind.</p>
+      </div>
+      <div class="note-card">
+        <span class="k">The plane</span>
+        <span class="v">Twin Otter, 20 seats</span>
+        <p class="d">Punta Arenas to Puerto Williams, 10 kg checked. Flies Monday to Saturday, wind permitting. Wind frequently does not permit.</p>
+      </div>
+      <div class="note-card">
+        <span class="k">Nearest neighbour south</span>
+        <span class="v">Antarctica</span>
+        <p class="d">About 1,000 km across the Drake Passage. Cape Horn is just over the hill. He is not going there. Probably.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Chart drawn October 2026, 43 days out.</span>
+    <span>Route: Dientes de Navarino, Isla Navarino, Chile.</span>
+    <a href="https://www.outsideonline.com/adventure-travel/destinations/south-america/dientes-de-navarino/">Blame this article.</a>
+  </footer>
+
+  </div>
+</main>
+
+<script>
+(function(){
+  "use strict";
+  /* ---------------- Itinerary (the single source of truth) ---------------- */
+  // Dates are the local calendar in Chile's Magallanes region (UTC−3 all year).
+  const TZ = "America/Punta_Arenas";
+  const LEGS = [
+    {date:"2026-11-19", lat:40.71, kind:"city", title:"New York", sub:"JFK, evening", when:"Thu Nov 19",
+     what:"The overnight to Santiago. Eleven hours. Window seat, hopefully. Pack weighed one last time at the gate.",
+     status:"Somewhere over the Caribbean, heading for Santiago.", mini:"In the air, southbound.", signal:false,
+     facts:["LATAM nonstop","10h 35m","overnight"], note:"re-weighing the tent for the ninth time"},
+    {date:"2026-11-20", lat:-53.16, kind:"city", title:"Santiago, then Punta Arenas", sub:"the long thin country, top to bottom", when:"Fri Nov 20",
+     what:"Lands in Santiago at dawn, crosses the country by lunch. Afternoon errands in Punta Arenas: a fuel canister, a stack of pesos, a long thoughtful look at the Strait of Magellan.",
+     status:"Punta Arenas. Buying a fuel canister and looking at the Strait of Magellan thoughtfully.", mini:"Punta Arenas, running errands.", signal:true,
+     facts:["crossed the equator ~3am","33.45° S → 53.16° S"], note:"toilets do not swirl the other way. he will check anyway."},
+    {date:"2026-11-21", lat:-54.93, kind:"city", title:"Puerto Williams", sub:"southernmost town on Earth, pop. ~2,900", when:"Sat Nov 21",
+     what:"The 8:00 Twin Otter over the Darwin Range. Then the important admin: sign in at the Carabineros, buy five days of food at the subsidised supermarket, eat the last meal somebody else cooked.",
+     status:"Puerto Williams. Signing in with the Carabineros. Eating the last meal that someone else cooked.", mini:"Puerto Williams, final prep.", signal:true,
+     facts:["DAP 8:00","Carabineros check-in","hostel night"], note:"last hot shower for a while"},
+    {date:"2026-11-22", lat:-54.96, kind:"camp", title:"Camp 1 · Laguna del Salto", sub:"Day 1 on the circuit", when:"Sun Nov 22",
+     what:"Up through the beech forest to Cerro Bandera, where the Beagle Channel opens out below, then along the ridge to the first lake. 10.8 km, 846 m of climbing.",
+     status:"Day 1 of the Dientes circuit. Cerro Bandera, then Laguna del Salto. Signal: none. Assume wet.", mini:"On the trail. Day 1.", signal:false,
+     facts:["10.8 km","+846 m","Cerro Bandera 610 m"], note:"the article's author got snowed on here in january"},
+    {date:"2026-11-23", lat:-55.00, kind:"camp", title:"Camp 2 · Laguna Escondida", sub:"Day 2 · Paso Australia, Paso de los Dientes", when:"Mon Nov 23",
+     what:"Short on distance, long on everything else. A streambed climb to Paso Australia, a snowy scree traverse over Paso de los Dientes, a steep drop to a hidden lake. 6.1 km.",
+     status:"Day 2. Paso Australia and Paso de los Dientes. Probably slipping on something.", mini:"On the trail. Day 2.", signal:false,
+     facts:["6.1 km","+431 m","two passes"], note:"the ridge with the drop into Laguna del Paso. hold on."},
+    {date:"2026-11-24", lat:-55.03, kind:"camp", title:"Camp 3 · Laguna Martillo", sub:"Day 3 · Paso Ventarrón, Paso Guerrico", when:"Tue Nov 24",
+     what:"Peat bogs, dwarf forest, and the windy pass whose name means exactly that. The views are supposed to be the best of the trip, if there are views. 8.3 km.",
+     status:"Day 3. Paso Ventarrón, Paso Guerrico, peat bogs. Mud up to the knee at least once.", mini:"On the trail. Day 3.", signal:false,
+     facts:["8.3 km","+362 m","Ventarrón = 'big wind'"], note:"gaiters earning their keep"},
+    {date:"2026-11-25", lat:-55.00, kind:"camp", title:"Camp 4 · Laguna Los Guanacos", sub:"Day 4 · Paso Virginia, the big one", when:"Wed Nov 25",
+     what:"The highest point of the circuit at 850 m, then a descent the route guides describe as skiing down gravel. Camp at the bottom in the trees, out of the wind. 8.3 km.",
+     status:"Day 4. Paso Virginia, the big one. Then skiing down gravel to Laguna Los Guanacos.", mini:"On the trail. Day 4.", signal:false,
+     facts:["8.3 km","+556 m","Paso Virginia 850 m"], note:"the scree. the famous scree."},
+    {date:"2026-11-26", lat:-54.93, kind:"city", title:"Back to Puerto Williams", sub:"Day 5 · Thanksgiving", when:"Thu Nov 26",
+     what:"Down through beaver country to a cow pasture and a quiet road, then a hitch or a taxi into town. Sign out at the Carabineros. Thanksgiving dinner is king crab.",
+     status:"Day 5. Walking out through beaver country. Thanksgiving dinner: king crab.", mini:"Walking out. Thanksgiving.", signal:true,
+     facts:["10.9 km","−619 m","Carabineros check-out","centolla"], note:"gratitude: elevated"},
+    {date:"2026-11-27", lat:-54.93, kind:"city", title:"Puerto Williams, spare day", sub:"the buffer", when:"Fri Nov 27",
+     what:"Reserved for weather. If the trek ran long, this is where it ends. If it didn't, this is a day of doing very little near the Beagle Channel, heroically.",
+     status:"Puerto Williams, buffer day. Either resting heroically or still on the trail. Both are fine.", mini:"Buffer day. Either is fine.", signal:true,
+     facts:["buffer","Omora park, maybe"], note:"a day with no passes in it"},
+    {date:"2026-11-28", lat:-33.45, kind:"city", title:"Three flights north", sub:"Twin Otter, jet, jet", when:"Sat Nov 28",
+     what:"The 9:45 out of Puerto Williams, the afternoon to Santiago, the overnight to New York. If the small plane is grounded by wind, this becomes another king crab day.",
+     status:"Three flights north. Twin Otter, then jet, then jet.", mini:"Flying home.", signal:true,
+     facts:["DAP 9:45","wind permitting","overnight to JFK"], note:"the wind has opinions"},
+    {date:"2026-11-29", lat:40.71, kind:"city", title:"Home", sub:"New York, mid-morning", when:"Sun Nov 29",
+     what:"Lands, unpacks nothing, sleeps. Begins telling people about the beavers.",
+     status:"Home. Unpacking nothing.", mini:"Home.", signal:true,
+     facts:["40.71° N","laundry: catastrophic"], note:"ask about the beavers"}
+  ];
+  const DEPART = "2026-11-19", RETURN = "2026-11-29";
+
+  /* ---------------- Date helpers ---------------- */
+  function todayISO(){
+    try{ return new Intl.DateTimeFormat("en-CA",{timeZone:TZ, year:"numeric", month:"2-digit", day:"2-digit"}).format(new Date()); }
+    catch(e){ return new Date().toISOString().slice(0,10); }
+  }
+  function daysBetween(a,b){ return Math.round((Date.UTC(+b.slice(0,4),+b.slice(5,7)-1,+b.slice(8,10)) - Date.UTC(+a.slice(0,4),+a.slice(5,7)-1,+a.slice(8,10)))/86400000); }
+  // Allow ?day=2026-11-24 for previewing a date (friends can peek ahead).
+  const params = new URLSearchParams(location.search);
+  const TODAY = /^\d{4}-\d{2}-\d{2}$/.test(params.get("day")||"") ? params.get("day") : todayISO();
+
+  function phase(){
+    if (TODAY < DEPART) return {name:"before", n:daysBetween(TODAY, DEPART)};
+    if (TODAY > RETURN) return {name:"after", n:daysBetween(RETURN, TODAY)};
+    return {name:"during", n:daysBetween(DEPART, TODAY)+1, leg:LEGS.find(l=>l.date===TODAY)};
+  }
+  const P = phase();
+
+  /* ---------------- Status board ---------------- */
+  const $ = (id)=>document.getElementById(id);
+  (function board(){
+    const ans=$("answer"), sub=$("answer-sub"), sig=$("signal"), sigT=$("signal-text"), big=$("big"), bigL=$("big-label"), bigN=$("big-note"), mini=$("status-mini");
+    if (P.name==="before"){
+      ans.firstChild.textContent = "New York, NY.";
+      sub.textContent = P.n===0 ? "Departure day. Pack is by the door. Pack is being re-weighed." : "Currently: re-weighing the tent.";
+      sig.classList.add("on"); sigT.textContent="Signal: excellent, annoyingly";
+      bigL.textContent="Days until departure"; big.textContent=P.n; bigN.textContent = P.n>30 ? "plenty of time to panic" : P.n>7 ? "the gear list has entered its final form" : "it is happening";
+      mini.textContent = `In New York. ${P.n} day${P.n===1?"":"s"} to go.`;
+    } else if (P.name==="after"){
+      ans.firstChild.textContent = "Back in New York.";
+      sub.textContent = "Ask him about the beavers.";
+      sig.classList.add("on"); sigT.textContent="Signal: restored";
+      bigL.textContent="Days since the bottom of the map"; big.textContent=P.n; bigN.textContent="still talking about the scree";
+      mini.textContent="Home. Full of stories.";
+    } else {
+      const L = P.leg;
+      ans.firstChild.textContent = L.title + ".";
+      sub.textContent = L.status;
+      sig.classList.add(L.signal?"on":"off"); sigT.textContent = L.signal ? "Signal: probably" : "Signal: none. Silence is normal.";
+      bigL.textContent="Day of the trip"; big.innerHTML = `${P.n}<small>OF 11</small>`; bigN.textContent = L.note;
+      mini.textContent = L.mini;
+    }
+  })();
+
+  /* ---------------- Stations ---------------- */
+  const host = $("stations");
+  const legIdx = P.name==="during" ? LEGS.findIndex(l=>l.date===TODAY) : (P.name==="after" ? LEGS.length : -1);
+  const latFmt = (v)=> Math.abs(v).toFixed(2)+"° "+(v<0?"S":"N");
+  LEGS.forEach((L,i)=>{
+    const el=document.createElement("article");
+    el.className = "station "+L.kind + (i<legIdx||P.name==="after" ? " done":"") + (i===legIdx ? " here":"");
+    el.dataset.lat = L.lat;
+    el.innerHTML = `
+      <span class="mark" aria-hidden="true"></span>
+      <div class="when"><span>${L.when}</span><span class="lat">${latFmt(L.lat)}</span></div>
+      <div>
+        <h3>${L.title}<span class="sub">${L.sub}</span></h3>
+        <p class="what">${L.what}</p>
+        <p class="note hand">${L.note}</p>
+        <div class="facts">${L.facts.map(f=>`<span>${f}</span>`).join("")}</div>
+      </div>
+      <span class="here-tag"><svg viewBox="0 0 34 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M32 8H4M9 3L4 8l5 5"/></svg>William, per the calendar</span>`;
+    host.appendChild(el);
+  });
+  // Fill the route line up to the current station.
+  requestAnimationFrame(()=>{
+    const done=$("done");
+    const st=[...host.querySelectorAll(".station")];
+    if (legIdx<0){ done.style.height="0"; return; }
+    if (legIdx>=st.length){ done.style.height="100%"; return; }
+    const m=st[legIdx].querySelector(".mark");
+    done.style.height = (m.offsetTop + st[legIdx].offsetTop + 11) + "px";
+  });
+
+  /* ---------------- Rail: latitude by scroll, compass, clock ---------------- */
+  const latEl=$("lat"), latSub=$("latsub"), needle=$("needle");
+  const NYC=40.71, PW=-54.93;
+  function onScroll(){
+    const st=[...host.querySelectorAll(".station")];
+    const mid = window.innerHeight*0.45;
+    let lat = NYC, label="scroll to go south";
+    if (st.length){
+      const top0 = st[0].getBoundingClientRect().top;
+      if (top0 > mid){ // above the route: interpolate from NYC to the first station as the hero scrolls away
+        const h = Math.max(1, host.getBoundingClientRect().top + window.scrollY);
+        const t = Math.min(1, Math.max(0, window.scrollY / h));
+        lat = NYC; label = t>0.5 ? "approaching the route" : "New York, New York";
+      } else {
+        let found=false;
+        for (let i=0;i<st.length-1;i++){
+          const a=st[i].getBoundingClientRect(), b=st[i+1].getBoundingClientRect();
+          if (a.top<=mid && b.top>mid){
+            const t=(mid-a.top)/Math.max(1,(b.top-a.top));
+            lat = (+st[i].dataset.lat)*(1-t) + (+st[i+1].dataset.lat)*t;
+            label = "between "+LEGS[i].when+" and "+LEGS[i+1].when; found=true; break;
+          }
+        }
+        if (!found){ lat=+st[st.length-1].dataset.lat; label = "the far end of the chart"; }
+      }
+    }
+    latEl.textContent = latFmt(lat); latSub.textContent = label;
+    // Needle: points N at NYC, swings to S at Puerto Williams latitude.
+    const t = Math.min(1, Math.max(0, (NYC-lat)/(NYC-PW)));
+    needle.style.transform = `rotate(${t*180}deg)`;
+  }
+  let ticking=false;
+  window.addEventListener("scroll", ()=>{ if(!ticking){ ticking=true; requestAnimationFrame(()=>{onScroll(); ticking=false;}); } }, {passive:true});
+  window.addEventListener("resize", onScroll);
+  onScroll();
+
+  function clock(){
+    try{ $("clock").textContent = new Intl.DateTimeFormat("en-GB",{timeZone:TZ, hour:"2-digit", minute:"2-digit"}).format(new Date()); }catch(e){}
+  }
+  clock(); setInterval(clock, 15000);
+
+  /* ---------------- Theme toggle ---------------- */
+  const root=document.documentElement, tb=$("themebtn");
+  function applyTheme(t){ if(t) root.setAttribute("data-theme",t); else root.removeAttribute("data-theme"); syncBtn(); drawSky(); }
+  function isDark(){ const t=root.getAttribute("data-theme"); if(t) return t==="dark"; return matchMedia("(prefers-color-scheme: dark)").matches; }
+  function syncBtn(){ tb.textContent = isDark() ? "Day" : "Night"; }
+  try{ const s=localStorage.getItem("wgs-theme"); if(s==="dark"||s==="light") applyTheme(s); }catch(e){}
+  syncBtn();
+  tb.addEventListener("click", ()=>{ const next = isDark() ? "light":"dark"; try{ localStorage.setItem("wgs-theme", next);}catch(e){} applyTheme(next); });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", ()=>{ syncBtn(); drawSky(); });
+
+  /* ---------------- Hero sky: Southern Cross at night, graticule by day ---------------- */
+  const sky=$("sky");
+  function drawSky(){
+    const hero=sky.parentElement, dpr=Math.min(2, window.devicePixelRatio||1);
+    const w=hero.clientWidth, h=hero.clientHeight; sky.width=w*dpr; sky.height=h*dpr;
+    const c=sky.getContext("2d"); c.setTransform(dpr,0,0,dpr,0,0); c.clearRect(0,0,w,h);
+    const css=getComputedStyle(root);
+    if (isDark()){
+      // deterministic star field + Crux (Acrux, Mimosa, Gacrux, Imai, Ginan) drawn with real relative positions
+      let seed=7; const rnd=()=> (seed = (seed*16807)%2147483647)/2147483647;
+      for(let i=0;i<180;i++){ const x=rnd()*w, y=rnd()*h, r=rnd()*1.2+0.2; c.globalAlpha=0.25+rnd()*0.6; c.fillStyle=css.getPropertyValue("--ink").trim(); c.beginPath(); c.arc(x,y,r,0,Math.PI*2); c.fill(); }
+      c.globalAlpha=1;
+      const cx=w*0.78, cy=h*0.38, s=Math.min(w,h)*0.11;
+      const crux=[[0,-1.0,2.6],[-0.95,0.15,2.4],[0.55,0.95,2.9],[0.9,-0.25,2.0],[0.35,0.25,1.3]]; // Gacrux, Mimosa, Acrux, Imai, Ginan (approx. sky layout)
+      c.strokeStyle=css.getPropertyValue("--ink-3").trim(); c.lineWidth=1; c.setLineDash([3,5]);
+      c.beginPath(); c.moveTo(cx+crux[0][0]*s, cy+crux[0][1]*s); c.lineTo(cx+crux[2][0]*s, cy+crux[2][1]*s);
+      c.moveTo(cx+crux[1][0]*s, cy+crux[1][1]*s); c.lineTo(cx+crux[3][0]*s, cy+crux[3][1]*s); c.stroke(); c.setLineDash([]);
+      c.fillStyle=css.getPropertyValue("--brass").trim();
+      crux.forEach(([x,y,r])=>{ c.beginPath(); c.arc(cx+x*s, cy+y*s, r, 0, Math.PI*2); c.fill(); });
+      c.font="11px 'IBM Plex Mono', monospace"; c.fillStyle=css.getPropertyValue("--ink-3").trim(); c.textAlign="left";
+      c.fillText("CRUX · visible from 55° S, not from Brooklyn", cx-1.1*s, cy+1.55*s);
+    } else {
+      // day: a faint graticule arc, the way a chart's latitude lines curve
+      c.strokeStyle=css.getPropertyValue("--line").trim(); c.lineWidth=1;
+      for(let i=0;i<6;i++){ c.beginPath(); c.arc(w*0.5, -h*2.2 + i*h*0.42, h*2.6, 0, Math.PI*2); c.stroke(); }
+      c.font="11px 'IBM Plex Mono', monospace"; c.fillStyle=css.getPropertyValue("--ink-3").trim(); c.textAlign="right";
+      c.fillText("graticule, decorative", w-8, h-10);
+    }
+  }
+  drawSky(); window.addEventListener("resize", drawSky);
+
+  /* ---------------- Elevation profile (to scale) ---------------- */
+  const PTS = [ // km from trailhead, metres, name, kind
+    [0,30,"Puerto Williams","town"],[2,120,"Róbalo bridge",""],[4,610,"Cerro Bandera","pass"],[7,560,"",""],[10.8,520,"Laguna del Salto","camp"],
+    [12.3,790,"Paso Australia","pass"],[13.4,700,"Laguna del Paso",""],[14.6,740,"Paso de los Dientes","pass"],[16.9,520,"Laguna Escondida","camp"],
+    [19.4,680,"Paso Ventarrón","pass"],[21.2,560,"",""],[22.6,545,"Paso Guerrico","pass"],[25.2,370,"Laguna Martillo","camp"],
+    [28.8,410,"Laguna Hermosa",""],[31.4,850,"Paso Virginia","pass"],[33.5,430,"Laguna Los Guanacos","camp"],
+    [37,300,"",""],[40,160,"beaver dams",""],[42.5,60,"cow pasture",""],[44.4,20,"road / Puerto Williams","town"]
+  ];
+  const CAMP_DAY = {"2026-11-22":"Laguna del Salto","2026-11-23":"Laguna Escondida","2026-11-24":"Laguna Martillo","2026-11-25":"Laguna Los Guanacos","2026-11-26":"road / Puerto Williams","2026-11-21":"Puerto Williams"};
+  (function profile(){
+    const W=860, H=300, m={l:44,r:16,t:34,b:36};
+    const xmax=44.4, ymax=1000;
+    const X=k=>m.l+(k/xmax)*(W-m.l-m.r), Y=e=>H-m.b-(e/ymax)*(H-m.t-m.b);
+    const ns="http://www.w3.org/2000/svg", svg=document.createElementNS(ns,"svg");
+    svg.setAttribute("viewBox",`0 0 ${W} ${H}`); svg.setAttribute("role","img"); svg.setAttribute("aria-label","Elevation profile of the Dientes de Navarino circuit, 0 to 44 kilometres, 0 to 1000 metres.");
+    const g=(cls)=>{const e=document.createElementNS(ns,"g"); if(cls)e.setAttribute("class",cls); svg.appendChild(e); return e;};
+    const grid=g("grid"), axis=g("axis");
+    [0,250,500,750,1000].forEach(v=>{ const l=document.createElementNS(ns,"line"); l.setAttribute("x1",m.l); l.setAttribute("x2",W-m.r); l.setAttribute("y1",Y(v)); l.setAttribute("y2",Y(v)); grid.appendChild(l);
+      const t=document.createElementNS(ns,"text"); t.setAttribute("x",m.l-8); t.setAttribute("y",Y(v)+4); t.setAttribute("text-anchor","end"); t.textContent=v+" m"; axis.appendChild(t); });
+    [0,10,20,30,40].forEach(k=>{ const t=document.createElementNS(ns,"text"); t.setAttribute("x",X(k)); t.setAttribute("y",H-m.b+18); t.setAttribute("text-anchor","middle"); t.textContent=k+" km"; axis.appendChild(t); });
+    const d = PTS.map((p,i)=>(i?"L":"M")+X(p[0]).toFixed(1)+" "+Y(p[1]).toFixed(1)).join(" ");
+    const area=document.createElementNS(ns,"path"); area.setAttribute("class","area"); area.setAttribute("d", d+` L${X(xmax)} ${Y(0)} L${X(0)} ${Y(0)} Z`); svg.appendChild(area);
+    const trace=document.createElementNS(ns,"path"); trace.setAttribute("class","trace"); trace.setAttribute("d",d); svg.appendChild(trace);
+    const labels=g("labels");
+    PTS.forEach((p,i)=>{
+      if(p[3]==="pass"){ const t=document.createElementNS(ns,"text"); t.setAttribute("class","label pass"); t.setAttribute("x",X(p[0])); t.setAttribute("y",Y(p[1])-9); t.setAttribute("text-anchor", i===2?"start":"middle"); t.textContent=p[2]; labels.appendChild(t); }
+      if(p[3]==="camp"){ const r=document.createElementNS(ns,"rect"); r.setAttribute("class","camp-mark"); r.setAttribute("x",X(p[0])-4); r.setAttribute("y",Y(p[1])-4); r.setAttribute("width",8); r.setAttribute("height",8); labels.appendChild(r);
+        const t=document.createElementNS(ns,"text"); t.setAttribute("class","label"); t.setAttribute("x",X(p[0])); t.setAttribute("y",Y(p[1])+20); t.setAttribute("text-anchor","middle"); t.textContent="⌂ "+p[2].replace("Laguna ","L. "); labels.appendChild(t); }
+    });
+    // "You are here": the camp for today's date, or nothing.
+    const youName = CAMP_DAY[TODAY];
+    if (youName){ const p=PTS.find(q=>q[2]===youName); if(p){ const ring=document.createElementNS(ns,"circle"); ring.setAttribute("class","you-ring"); ring.setAttribute("cx",X(p[0])); ring.setAttribute("cy",Y(p[1])); ring.setAttribute("r",11); svg.appendChild(ring);
+      const dot=document.createElementNS(ns,"circle"); dot.setAttribute("class","you"); dot.setAttribute("cx",X(p[0])); dot.setAttribute("cy",Y(p[1])); dot.setAttribute("r",6); svg.appendChild(dot); } }
+    // hover layer
+    const cross=document.createElementNS(ns,"line"); cross.setAttribute("class","cross"); cross.setAttribute("y1",m.t); cross.setAttribute("y2",H-m.b); cross.style.display="none"; svg.appendChild(cross);
+    const hit=document.createElementNS(ns,"rect"); hit.setAttribute("class","hit"); hit.setAttribute("x",m.l); hit.setAttribute("y",m.t); hit.setAttribute("width",W-m.l-m.r); hit.setAttribute("height",H-m.t-m.b); svg.appendChild(hit);
+    const box=$("profile"), tip=$("tip");
+    box.insertBefore(svg, tip);
+    function move(ev){
+      const r=svg.getBoundingClientRect(); const px=(ev.clientX-r.left)/r.width*W;
+      const km=Math.min(xmax,Math.max(0,(px-m.l)/(W-m.l-m.r)*xmax));
+      let best=PTS[0]; for(const p of PTS){ if(Math.abs(p[0]-km)<Math.abs(best[0]-km)) best=p; }
+      cross.setAttribute("x1",X(best[0])); cross.setAttribute("x2",X(best[0])); cross.style.display="";
+      tip.innerHTML = `<b>${best[2]||"somewhere boggy"}</b> · ${best[1]} m · km ${best[0]}`;
+      tip.style.left = (X(best[0])/W*r.width + (svg.offsetLeft||0)) + "px"; tip.style.top = (Y(best[1])/H*r.height + (svg.offsetTop||0)) + "px"; tip.style.display="block";
+    }
+    hit.addEventListener("pointermove", move); hit.addEventListener("pointerdown", move);
+    hit.addEventListener("pointerleave", ()=>{ tip.style.display="none"; cross.style.display="none"; });
+  })();
+
+  /* ---------------- Dispatches (dispatches.json next to this file) ---------------- */
+  (function dispatches(){
+    const list=$("dispatch-list");
+    fetch("dispatches.json",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject()).then(data=>{
+      const items=(data.dispatches||[]).slice().sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+      if(!items.length){ list.innerHTML=`<div class="empty">No dispatches yet. The first one is scheduled for an airport.</div>`; return; }
+      list.innerHTML = items.map(d=>`<article class="dispatch"><div class="meta"><span>${esc(d.date||"")}</span><span>${esc(d.where||"")}</span></div><p class="text">${esc(d.text||"")}${d.lat!=null?` <em>· ${latFmt(+d.lat)}</em>`:""}</p></article>`).join("");
+    }).catch(()=>{ list.innerHTML=`<div class="empty">Dispatches will show up here once the chart is on the web.</div>`; });
+    function esc(s){ return String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+  })();
+
+  /* ---------------- Worry meter ---------------- */
+  (function worry(){
+    let lvl, title, text, steps, deg; // deg: −90 (FINE) … +90 (ACT)
+    if (TODAY < "2026-11-27"){ deg=-80; title="Fine"; text="No news is the plan. He is either not there yet, or on a mountain with no signal, as scheduled.";
+      steps=["Read the dispatches, if any.","Do nothing. Enjoy your own Thanksgiving."]; }
+    else if (TODAY === "2026-11-27"){ deg=-45; title="Still fine"; text="This is the built-in spare day. If the trek ran long, he is walking out today. If it didn't, he is eating crab.";
+      steps=["Check dispatches this evening.","Do nothing else."]; }
+    else if (TODAY === "2026-11-28"){ deg=0; title="Hmm"; text="A dispatch should appear today or tomorrow. If the small plane was grounded by wind, he is stuck in town, which is the good kind of stuck.";
+      steps=["Check dispatches.","Text him. Signal returns the moment he reaches town."]; }
+    else if (TODAY === "2026-11-29"){ deg=40; title="Call him"; text="He is due in New York this morning. If there has been no dispatch and no reply by tonight, move to the next step.";
+      steps=["Text, then call.","Check the dispatches one more time.","If still nothing by midnight, go to the next level."]; }
+    else if (TODAY > "2026-11-29" && TODAY <= "2026-12-06"){ deg=80; title="Act"; text="No word by now is out of plan. He registered the circuit with the Carabineros de Chile in Puerto Williams on Nov 21; they hold the search-and-rescue file.";
+      steps=["Call him once more.","Call Carabineros de Chile (emergency 133 inside Chile; from abroad, the Puerto Williams station via +56). Say: solo hiker, Dientes de Navarino circuit, registered Nov 21, due out Nov 26.","Call the U.S. Embassy in Santiago, American Citizen Services."]; }
+    else { deg=-80; title="Fine"; text= TODAY > "2026-12-06" ? "He is home. The needle is retired." : "Nothing to worry about yet."; steps=["Ask about the beavers."]; }
+    $("worry-needle").style.transform=`rotate(${deg}deg)`;
+    $("worry-level").innerHTML=`<span class="lv">Level: ${title}</span>`;
+    $("worry-text").textContent=text;
+    $("worry-steps").innerHTML=steps.map(s=>`<li>${s}</li>`).join("");
+  })();
+
+  /* ---------------- Four seasons in an hour ---------------- */
+  (function seasons(){
+    const S=[
+      ["Sun", `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>`],
+      ["Wind, sideways", `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8h11a3 3 0 1 0-3-3M3 13h15a3 3 0 1 1-3 3M3 18h8"/></svg>`],
+      ["Snow, in spring", `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2v20M2 12h20M5 5l14 14M19 5 5 19"/></svg>`],
+      ["Hail, briefly", `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 14a4 4 0 0 1 .6-7.95A5.5 5.5 0 0 1 18 7a3.5 3.5 0 0 1-.5 7"/><circle cx="8" cy="18" r="1"/><circle cx="12" cy="20" r="1"/><circle cx="16" cy="18" r="1"/></svg>`],
+      ["Sun again, no explanation", `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>`]
+    ];
+    let i=0; const ico=$("season-ico"), v=$("season-v");
+    function show(){ ico.innerHTML=S[i][1]; v.textContent=S[i][0]; }
+    show();
+    if(!matchMedia("(prefers-reduced-motion: reduce)").matches){ setInterval(()=>{ v.style.opacity=0; setTimeout(()=>{ i=(i+1)%S.length; show(); v.style.opacity=1; },350); }, 3600); }
+  })();
+})();
+</script>
+</body>
+</html>
