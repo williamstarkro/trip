@@ -13,11 +13,15 @@ Everything is one static page, `index.html`, plus `dispatches.json`.
 { "date": "2026-11-21", "where": "Puerto Williams", "lat": -54.93, "text": "Signed in with the Carabineros. Bought 2 kg of cookies." }
 ```
 
-3. Commit to `main`. The page refreshes within a minute or two. Newest date shows first. `lat` is optional.
+3. Commit to `main`. The page refreshes within a minute or two. Newest date shows first. `lat` is optional. Add `"time": "14:05"` (Puerto Williams time, UTC−3) to make the "last heard from" counter precise; without it the page assumes noon.
 
 ## Previewing a date
 
 Append `?day=2026-11-24` to the URL to see what the chart says on any date. Friends can use it to peek ahead.
+
+## Day and night
+
+The page is light while the sun is up in Puerto Williams and dark when it is down, computed from the real sunrise and sunset at 54.93° S. The Day/Night button overrides that for the viewer who clicks it. The wind gets stronger as you scroll south; the `Wind: on` button plays a synthesized wind, off by default.
 
 ## Changing the plan
 
